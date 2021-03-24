@@ -2,176 +2,52 @@ from OpenGL.GL import *
 from glew_wish import *
 import glfw
 from math import *
-
-xObstaculo = 0.0
-yObstaculo = 0.6
-obstaculoVivo = True
-
-xCarrito = 0.0
-yCarrito = -0.8
-
-colisionando = False
-
-angulo = 0
-# el desfase es debido a que el triangulo en 0 grados voltea
-# hacia arriba y no hacia la derecha
-desfase = 90
-
-velocidad = 1
-velocidad_angular = 180
+from Carrito import *
+from Obstaculo import *
+from Bala import *
 
 tiempo_anterior = 0
 
-# Indicador si hay "bala" viva o no
-disparando = False
-xBala = 0
-yBala = 0
+carrito = Carrito()
 
+obstaculos = []
 
-def actualizar_bala(tiempo_delta):
-    global disparando
-    global xBala
-    global yBala
-    global anguloBala
-    global velocidad
-    global obstaculoVivo
-    if disparando:
-        if xBala >= 1:
-            disparando = False
-        elif xBala <= -1:
-            disparando = False
-        elif yBala >= 1:
-            disparando = False
-        elif yBala <= -1:
-            disparando = False
-        print("Disparando")
-        yBala = yBala + \
-            (sin((anguloBala + desfase) * 3.14159 / 180) * velocidad * tiempo_delta)
-        xBala = xBala + \
-            (cos((anguloBala + desfase) * 3.14159 / 180) * velocidad * tiempo_delta)
-        # checar colision con obstaculo si sigue "vivo"
-        if obstaculoVivo and xBala + 0.01 > xObstaculo - 0.15 and xBala - 0.01 < xObstaculo + 0.15 and yBala + 0.01 > yObstaculo - 0.15 and yBala - 0.01 < yObstaculo + 0.15:
-            obstaculoVivo = False
-            disparando = False
-
-
-def checar_colisiones():
-    global colisionando
-    # Si extremaDerechaCarrito > extremaIzquierdaObstaculo
-    # Y extremaIzquierdaCarrito < extremaDerechaObstaculo
-    # Y extremoSuperiorCarrito > extremoInferiorObstaculo
-    # Y extremoInferiorCarrito < extremoSuperiorObstaculo
-    if xCarrito + 0.05 > xObstaculo - 0.15 and xCarrito - 0.05 < xObstaculo + 0.15 and yCarrito + 0.05 > yObstaculo - 0.15 and yCarrito - 0.05 < yObstaculo + 0.15:
-        colisionando = True
-    else:
-        colisionando = False
-
-
+def iniciaizarObstaculos():
+    global obstaculos
+    obstaculos.append(Obstaculo(0.4, 0.6))
+    obstaculos.append(Obstaculo(-0.5, 0.3))
+    obstaculos.append(Obstaculo(0.5, -0.1))
+ 
 def actualizar(window):
     global tiempo_anterior
-    global angulo
-    global xCarrito
-    global yCarrito
+    global carrito
 
     tiempo_actual = glfw.get_time()
     tiempo_delta = tiempo_actual - tiempo_anterior
 
-    estadoIzquierda = glfw.get_key(window, glfw.KEY_LEFT)
-    estadoDerecha = glfw.get_key(window, glfw.KEY_RIGHT)
-    estadoAbajo = glfw.get_key(window, glfw.KEY_DOWN)
-    estadoArriba = glfw.get_key(window, glfw.KEY_UP)
+    carrito.actualizar(window, tiempo_delta)
+    
+    for obstaculo in obstaculos:
+        if obstaculo.vivo:
+            carrito.checar_colisiones(obstaculo)
+            if carrito.colisionando:
+                break
 
-    if estadoIzquierda == glfw.PRESS:
-        angulo = angulo + (velocidad_angular * tiempo_delta)
-        if angulo > 360:
-            angulo = 0
-    if estadoDerecha == glfw.PRESS:
-        angulo = angulo - (velocidad_angular * tiempo_delta)
-        if angulo < 0:
-            angulo = 360
-
-    if estadoArriba == glfw.PRESS:
-        yCarrito = yCarrito + \
-            (sin((angulo + desfase) * 3.14159 / 180) * velocidad * tiempo_delta)
-        xCarrito = xCarrito + \
-            (cos((angulo + desfase) * 3.14159 / 180) * velocidad * tiempo_delta)
-
-    checar_colisiones()
-    actualizar_bala(tiempo_delta)
     tiempo_anterior = tiempo_actual
 
-
-def dibujarObstaculo():
-    global xObstaculo
-    global yObstaculo
-
-    if obstaculoVivo:
-        glPushMatrix()
-        glTranslate(xObstaculo, yObstaculo, 0.0)
-        glBegin(GL_QUADS)
-        glColor3f(0.0, 0.0, 1.0)
-        glVertex(-0.15, 0.15, 0.0)
-        glVertex(0.15, 0.15, 0.0)
-        glVertex(0.15, -0.15, 0.0)
-        glVertex(-0.15, -0.15, 0.0)
-        glEnd()
-        glPopMatrix()
-
-
-def dibujar_bala():
-    global disparando
-    global xBala
-    global yBala
-    if disparando == True:
-        glPushMatrix()
-        glTranslate(xBala, yBala, 0.0)
-        glRotate(anguloBala, 0.0, 0.0, 1.0)
-        glBegin(GL_QUADS)
-        glColor3f(1.0, 1.0, 1.0)
-        glVertex3f(-0.01, 0.01, 0.0)
-        glVertex3f(0.01, 0.01, 0.0)
-        glVertex3f(0.01, -0.01, 0.0)
-        glVertex3f(-0.01, -0.01, 0.0)
-        glEnd()
-        glPopMatrix()
-
-
-def dibujarCarrito():
-    global colisionando
-    global xCarrito
-    global yCarrito
-    glPushMatrix()
-    glTranslate(xCarrito, yCarrito, 0.0)
-    glRotate(angulo, 0.0, 0.0, 1.0)
-    glBegin(GL_TRIANGLES)
-    if colisionando == True:
-        glColor3f(1.0, 1.0, 1.0)
-    else:
-        glColor3f(1.0, 0.0, 0.0)
-    glVertex3f(0.0, 0.05, 0.0)
-    glVertex3f(-0.05, -0.05, 0.0)
-    glVertex3f(0.05, -0.05, 0.0)
-    glEnd()
-    glPopMatrix()
-
-
 def dibujar():
+    global carrito
+    global obstaculos
     # rutinas de dibujo
-    dibujarObstaculo()
-    dibujarCarrito()
-    dibujar_bala()
+    for obstaculo in obstaculos:
+        obstaculo.dibujar()
+    carrito.dibujar()
 
 
 def key_callback(window, key, scancode, action, mods):
-    global disparando
-    global anguloBala
-    global xBala
-    global yBala
-    if not disparando and key == glfw.KEY_SPACE and action == glfw.PRESS:
-        disparando = True
-        xBala = xCarrito
-        yBala = yCarrito
-        anguloBala = angulo
+    global carrito
+    if not carrito.disparando and key == glfw.KEY_SPACE and action == glfw.PRESS:
+        carrito.disparar()
 
 
 def main():
@@ -182,11 +58,6 @@ def main():
     # crea la ventana,
     # independientemente del SO que usemos
     window = glfw.create_window(800, 800, "Mi ventana", None, None)
-
-    # Configuramos OpenGL
-    glfw.window_hint(glfw.SAMPLES, 4)
-    glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-    glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
     glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
     glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
@@ -214,6 +85,8 @@ def main():
     print(version_shaders)
 
     glfw.set_key_callback(window, key_callback)
+
+    iniciaizarObstaculos()
 
     while not glfw.window_should_close(window):
         # Establece regiond e dibujo
